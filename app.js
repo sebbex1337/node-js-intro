@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs/promises";
 import cors from "cors";
+import { connection } from "./database.js";
 
 const app = express();
 const port = process.env.PORT || 3333;
@@ -21,27 +22,42 @@ async function getUsersFromJSON() {
 
 // READ all users
 app.get("/users", async (request, response) => {
-	response.json(await getUsersFromJSON());
+	const query = "SELECT * FROM `users`";
+	connection.query(query, function (err, result, fields) {
+		if (err) {
+			console.log(err);
+		} else {
+			response.json(result);
+		}
+	});
 });
 
 // READ one user
 app.get("/users/:id", async (request, response) => {
 	const id = request.params.id; // tager id fra url'en, så det kan anvendes til at finde den givne bruger med "det" id.
-	const users = await getUsersFromJSON();
-	const user = users.find((user) => user.id === id);
-	response.json(user);
+	const query = `SELECT * FROM "users" WHERE id = ?;`;
+	const values = [id];
+	connection.query(query, values, function (err, results, fields) {
+		if (err) {
+			console.log(err);
+		} else {
+			response.json(results[0]);
+		}
+	});
 });
 
 // CREATE user
 app.post("/users", async (request, response) => {
 	const newUser = request.body;
-	newUser.id = new Date().getTime();
-	console.log(newUser);
-
-	const users = await getUsersFromJSON();
-	users.push(newUser);
-	fs.writeFile("data.json", JSON.stringify(users));
-	response.json(users);
+	const query = "INSERT INTO 'users' (image, mail, name, title) VALUES (?,?,?,?);";
+	const values = [newUser.image, newUser.mail, newUser.name, newUser.title];
+	connection.query(query, values, (err, results, fields) => {
+		if (err) {
+			console.log(err);
+		} else {
+			response.json(results);
+		}
+	});
 });
 
 // UPDATE user
